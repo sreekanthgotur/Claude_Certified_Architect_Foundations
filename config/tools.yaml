@@ -1,0 +1,77 @@
+# Tool registry
+# tool_name → risk level, approval required, rate limit, description
+
+tools:
+  lookup_order:
+    risk: low
+    approval_required: false
+    rate_limit: null
+    type: read
+    description: Retrieve order status, tracking info, and items
+
+  lookup_account:
+    risk: low
+    approval_required: false
+    rate_limit: null
+    type: read
+    description: Customer profile, subscription status, history
+
+  search_knowledge_base:
+    risk: low
+    approval_required: false
+    rate_limit: null
+    type: read
+    description: Search product docs, FAQs, and policies
+
+  search_tickets:
+    risk: low
+    approval_required: false
+    rate_limit: null
+    type: read
+    description: Query open tickets by customer ID, category, and subject for duplicate detection
+
+  create_ticket:
+    risk: medium
+    approval_required: false
+    rate_limit: null
+    type: write
+    requires_dedup_check: true
+    description: Create a support ticket in CRM (must be preceded by search_tickets duplicate check)
+
+  initiate_return:
+    risk: high
+    approval_required: conditional
+    approval_threshold_usd: 100
+    rate_limit: null
+    type: write
+    description: Start a return/refund process
+
+  update_subscription:
+    risk: high
+    approval_required: true
+    rate_limit: 3_per_session
+    type: write
+    description: Modify subscription plan (upgrade/downgrade/cancel)
+
+  escalate_to_human:
+    risk: medium
+    approval_required: false
+    rate_limit: null
+    type: write
+    description: Transfer conversation to a live human agent
+
+# Server-side tools (managed by Anthropic)
+server_tools:
+  web_search:
+    type_id: web_search_20260209
+    allowed_domains:
+      - "help.example.com"
+      - "docs.example.com"
+      - "status.example.com"
+      - "shipping.example.com"
+
+  web_fetch:
+    type_id: web_fetch_20260209
+
+  code_execution:
+    type_id: code_execution_20260521

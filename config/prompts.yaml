@@ -1,0 +1,38 @@
+# Prompt template metadata
+# Tier → template module, cache breakpoint position
+
+templates:
+  classifier:
+    module: src.prompts.classifier_prompt
+    function: build_classifier_prompt
+    cache_breakpoint: end_of_system
+    max_tokens: 200
+
+  tier1:
+    module: src.prompts.system_stable
+    function: build_stable_prompt
+    dynamic_module: src.prompts.system_dynamic
+    dynamic_function: build_dynamic_context
+    cache_breakpoint: end_of_stable_layer
+    include_citations: true
+
+  tier2:
+    module: src.prompts.system_stable
+    function: build_stable_prompt
+    dynamic_module: src.prompts.system_dynamic
+    dynamic_function: build_dynamic_context
+    cache_breakpoint: end_of_stable_layer
+    include_tool_descriptions: true
+
+  tier3:
+    module: src.prompts.system_stable
+    function: build_stable_prompt
+    dynamic_module: src.prompts.system_dynamic
+    dynamic_function: build_dynamic_context
+    cache_breakpoint: end_of_stable_layer
+    include_tool_descriptions: true
+    include_agentic_instructions: true
+
+# Render order reminder:
+# tools → system → messages
+# Cache breakpoints must account for this order.

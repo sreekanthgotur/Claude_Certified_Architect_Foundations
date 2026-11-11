@@ -1,0 +1,60 @@
+# Model selection matrix
+# Tier → model ID, effort level, timeout, streaming, max retries
+
+classifier:
+  model_id: claude-haiku-5-5
+  effort: low
+  timeout_seconds: 5
+  streaming: false
+  max_retries: 2
+  max_tokens: 200
+
+tier1:
+  model_id: claude-sonnet-5-5
+  effort: medium
+  timeout_seconds: 10
+  streaming: true
+  max_retries: 2
+  max_tokens: 4096
+
+tier2:
+  model_id: claude-opus-5-5
+  effort: high
+  timeout_seconds: 30
+  streaming: true
+  max_retries: 3
+  max_tokens: 8192
+
+tier3:
+  model_id: claude-opus-5-5
+  effort: xhigh
+  timeout_seconds: 120
+  streaming: true
+  max_retries: 5
+  max_tokens: 16384
+  task_budget: 20000
+
+premium:
+  model_id: claude-opus-5-5
+  effort: high
+  speed: fast
+  timeout_seconds: 15
+  streaming: true
+  max_retries: 3
+  max_tokens: 8192
+
+batch:
+  model_id: claude-opus-5-5
+  effort: high
+  timeout_seconds: 300
+  streaming: false
+  max_retries: 2
+  max_tokens: 8192
+
+eval:
+  model_id: claude-opus-5-5
+  effort: high
+  timeout_seconds: 60
+  streaming: false
+  max_retries: 2
+  max_tokens: 8192

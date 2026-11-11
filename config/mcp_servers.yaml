@@ -1,0 +1,54 @@
+# MCP server connection configurations
+# Beta header: mcp-client-2025-11-20
+# Both mcp_servers AND tools entries are required.
+
+mcp_beta: mcp-client-2025-11-20
+
+servers:
+  crm:
+    url: "${CRM_MCP_URL}"
+    name: crm
+    auth_type: oauth2_client_credentials
+    auth_secret: "${CRM_OAUTH_SECRET_ARN}"
+    timeout_seconds: 5
+    tools:
+      - lookup_customer
+      - search_tickets
+      - create_ticket
+      - link_conversation_to_ticket
+      - list_interactions
+      - update_customer_notes
+
+  orders:
+    url: "${ORDERS_MCP_URL}"
+    name: orders
+    auth_type: api_key
+    auth_secret: "${ORDERS_API_KEY_ARN}"
+    timeout_seconds: 5
+    tools:
+      - lookup_order
+      - list_orders
+      - initiate_return
+      - get_tracking
+
+  knowledge:
+    url: "${KNOWLEDGE_MCP_URL}"
+    name: knowledge
+    auth_type: none
+    timeout_seconds: 5
+    tools:
+      - search_docs
+      - get_document
+      - list_categories
+
+  billing:
+    url: "${BILLING_MCP_URL}"
+    name: billing
+    auth_type: oauth2_scoped
+    auth_secret: "${BILLING_OAUTH_SECRET_ARN}"
+    timeout_seconds: 5
+    tools:
+      - get_subscription
+      - update_subscription
+      - list_invoices
+      - calculate_proration

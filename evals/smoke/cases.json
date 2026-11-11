@@ -1,0 +1,66 @@
+[
+  {
+    "id": "smoke-001",
+    "input": "Where is my order ORD-12345?",
+    "expected_tier": 1,
+    "expected_category": "shipping",
+    "expected_tools": ["lookup_order"],
+    "should_escalate": false
+  },
+  {
+    "id": "smoke-002",
+    "input": "I want to return the widget I bought last week.",
+    "expected_tier": 2,
+    "expected_category": "returns",
+    "expected_tools": ["lookup_order", "initiate_return"],
+    "should_escalate": false
+  },
+  {
+    "id": "smoke-003",
+    "input": "What are your business hours?",
+    "expected_tier": 1,
+    "expected_category": "general",
+    "expected_tools": ["search_knowledge_base"],
+    "should_escalate": false
+  },
+  {
+    "id": "smoke-004",
+    "input": "I was charged twice and the product is broken.",
+    "expected_tier": 3,
+    "expected_category": "complex",
+    "expected_tools": ["lookup_account"],
+    "should_escalate": true
+  },
+  {
+    "id": "smoke-005",
+    "input": "Upgrade my plan to enterprise.",
+    "expected_tier": 2,
+    "expected_category": "account",
+    "expected_tools": ["lookup_account", "update_subscription"],
+    "should_escalate": false
+  },
+  {
+    "id": "smoke-006",
+    "input": "The app crashes on file upload.",
+    "expected_tier": 2,
+    "expected_category": "technical",
+    "expected_tools": ["search_knowledge_base"],
+    "should_escalate": false
+  },
+  {
+    "id": "smoke-007",
+    "input": "Let me talk to a human agent.",
+    "expected_tier": 2,
+    "expected_category": "complex",
+    "expected_tools": ["escalate_to_human"],
+    "should_escalate": true
+  },
+  {
+    "id": "smoke-008",
+    "input": "How do I reset my password?",
+    "expected_tier": 1,
+    "expected_category": "account",
+    "expected_tools": ["search_knowledge_base"],
+    "should_escalate": false
+  }
+]

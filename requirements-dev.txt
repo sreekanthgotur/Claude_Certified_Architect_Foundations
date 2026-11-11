@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest>=8.3.0
+pytest-asyncio>=0.25.0
+pytest-cov>=6.0.0
+mypy>=1.13.0
+ruff>=0.8.0
+types-pyyaml>=6.0.12
+types-boto3>=1.35.0
+moto[dynamodb,s3,secretsmanager]>=5.0.0
