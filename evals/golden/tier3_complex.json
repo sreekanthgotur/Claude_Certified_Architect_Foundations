@@ -1,0 +1,57 @@
+[
+  {
+    "id": "t3-complex-001",
+    "prompt": "I have three orders from last month and none of them received the HOLIDAY20 promotional discount. Orders are ORD-111, ORD-222, and ORD-333. Can you investigate and fix this?",
+    "category": "tier3_complex",
+    "description": "Multi-order promotional discount investigation",
+    "expected": {
+      "tier": 3,
+      "expected_tools": ["lookup_order", "lookup_account"],
+      "latency_ms_max": 120000
+    }
+  },
+  {
+    "id": "t3-complex-002",
+    "prompt": "I was charged twice for order ORD-444 and the wrong item was shipped. I need the correct item sent and both duplicate charges refunded. Also my loyalty points were not credited.",
+    "category": "tier3_complex",
+    "description": "Triple issue: double charge, wrong item, missing points",
+    "expected": {
+      "tier": 3,
+      "expected_tools": ["lookup_order", "lookup_account"],
+      "latency_ms_max": 120000
+    }
+  },
+  {
+    "id": "t3-complex-003",
+    "prompt": "My account shows a subscription I never signed up for. I've been charged $49.99 monthly for the last 6 months. I need a full refund and an explanation of how this happened.",
+    "category": "tier3_complex",
+    "description": "Unauthorized subscription investigation",
+    "expected": {
+      "tier": 3,
+      "expected_tools": ["lookup_account"],
+      "latency_ms_max": 120000
+    }
+  },
+  {
+    "id": "t3-complex-004",
+    "prompt": "I've had five separate orders in the last two months, all with shipping delays. I want to know why, and I want compensation for the repeated inconvenience. My customer ID is cust_99999.",
+    "category": "tier3_complex",
+    "description": "Pattern analysis: repeated shipping failures",
+    "expected": {
+      "tier": 3,
+      "expected_tools": ["lookup_account", "lookup_order", "search_knowledge_base"],
+      "latency_ms_max": 120000
+    }
+  },
+  {
+    "id": "t3-complex-005",
+    "prompt": "I need someone to look into a complex billing discrepancy across my personal and business accounts. There are credits that should have transferred and subscription overlaps. This is too complex for a bot.",
+    "category": "tier3_complex",
+    "description": "Budget exhaustion case — should escalate",
+    "expected": {
+      "tier": 3,
+      "should_escalate": true,
+      "latency_ms_max": 120000
+    }
+  }
+]

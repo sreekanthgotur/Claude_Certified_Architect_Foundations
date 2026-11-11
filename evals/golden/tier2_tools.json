@@ -1,0 +1,116 @@
+[
+  {
+    "id": "t2-tool-001",
+    "prompt": "Where is my order ORD-98765?",
+    "category": "tier2_tools",
+    "description": "Order status lookup",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_order"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-002",
+    "prompt": "I received a broken item in order ORD-11111. I want to return it for a full refund.",
+    "category": "tier2_tools",
+    "description": "Return initiation (high-risk write)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_order", "initiate_return"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-003",
+    "prompt": "I want to upgrade my subscription from Basic to Premium.",
+    "category": "tier2_tools",
+    "description": "Subscription update (high-risk write)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_account", "update_subscription"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-004",
+    "prompt": "Please create a support ticket for my shipping issue with order ORD-55555.",
+    "category": "tier2_tools",
+    "description": "Ticket creation with dedup check",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets", "create_ticket"],
+      "latency_ms_max": 15000,
+      "dedup_expected": {
+        "is_duplicate": false
+      }
+    }
+  },
+  {
+    "id": "t2-tool-005",
+    "prompt": "What is my current subscription plan and when does it renew?",
+    "category": "tier2_tools",
+    "description": "Account lookup (read-only)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_account"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-006",
+    "prompt": "Can you check orders ORD-111 and ORD-222 for me?",
+    "category": "tier2_tools",
+    "description": "Parallel tool calls (two order lookups)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_order", "lookup_order"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-007",
+    "prompt": "I want a refund of $200 on order ORD-77777.",
+    "category": "tier2_tools",
+    "description": "High-value refund (above $100 threshold)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_order", "initiate_return"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-008",
+    "prompt": "Cancel my subscription effective immediately.",
+    "category": "tier2_tools",
+    "description": "Subscription cancellation (high-risk)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_account", "update_subscription"],
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-009",
+    "prompt": "I need to talk to a real person. This bot is not helping.",
+    "category": "tier2_tools",
+    "description": "Explicit escalation request",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["escalate_to_human"],
+      "should_escalate": true,
+      "latency_ms_max": 15000
+    }
+  },
+  {
+    "id": "t2-tool-010",
+    "prompt": "Return order ORD-33333, it was only $25.",
+    "category": "tier2_tools",
+    "description": "Low-value refund (below threshold)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["lookup_order", "initiate_return"],
+      "latency_ms_max": 15000
+    }
+  }
+]

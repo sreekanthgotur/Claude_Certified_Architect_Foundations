@@ -1,0 +1,92 @@
+[
+  {
+    "id": "golden-001",
+    "input": "Where is my order ORD-12345?",
+    "expected_tier": 1,
+    "expected_category": "shipping",
+    "expected_tools": ["lookup_order"],
+    "should_escalate": false,
+    "acceptable_responses": ["tracking", "shipped", "delivery"]
+  },
+  {
+    "id": "golden-002",
+    "input": "I want to return the widget I bought last week. Order ORD-67890.",
+    "expected_tier": 2,
+    "expected_category": "returns",
+    "expected_tools": ["lookup_order", "initiate_return"],
+    "should_escalate": false,
+    "acceptable_responses": ["return", "refund", "process"]
+  },
+  {
+    "id": "golden-003",
+    "input": "What are your business hours?",
+    "expected_tier": 1,
+    "expected_category": "general",
+    "expected_tools": ["search_knowledge_base"],
+    "should_escalate": false,
+    "acceptable_responses": ["hours", "available", "open"]
+  },
+  {
+    "id": "golden-004",
+    "input": "I was charged twice on my last invoice and the product is broken.",
+    "expected_tier": 3,
+    "expected_category": "complex",
+    "expected_tools": ["lookup_account", "search_tickets"],
+    "should_escalate": true,
+    "acceptable_responses": ["investigate", "charged", "looking into"]
+  },
+  {
+    "id": "golden-005",
+    "input": "I want to upgrade my subscription to the enterprise plan.",
+    "expected_tier": 2,
+    "expected_category": "account",
+    "expected_tools": ["lookup_account", "update_subscription"],
+    "should_escalate": false,
+    "acceptable_responses": ["upgrade", "enterprise", "subscription"]
+  },
+  {
+    "id": "golden-006",
+    "input": "The app keeps crashing when I try to upload a file.",
+    "expected_tier": 2,
+    "expected_category": "technical",
+    "expected_tools": ["search_knowledge_base", "create_ticket"],
+    "should_escalate": false,
+    "acceptable_responses": ["troubleshoot", "crash", "upload", "ticket"]
+  },
+  {
+    "id": "golden-007",
+    "input": "I need to speak with a manager right now.",
+    "expected_tier": 2,
+    "expected_category": "complex",
+    "expected_tools": ["escalate_to_human"],
+    "should_escalate": true,
+    "acceptable_responses": ["escalat", "human", "agent", "manager"]
+  },
+  {
+    "id": "golden-008",
+    "input": "Can you cancel my account? Customer ID CUST-00042.",
+    "expected_tier": 2,
+    "expected_category": "account",
+    "expected_tools": ["lookup_account", "update_subscription"],
+    "should_escalate": false,
+    "acceptable_responses": ["cancel", "account", "confirm"]
+  },
+  {
+    "id": "golden-009",
+    "input": "How do I reset my password?",
+    "expected_tier": 1,
+    "expected_category": "account",
+    "expected_tools": ["search_knowledge_base"],
+    "should_escalate": false,
+    "acceptable_responses": ["password", "reset", "settings"]
+  },
+  {
+    "id": "golden-010",
+    "input": "I placed order ORD-11111 three weeks ago, it says shipped but I never received it, and my card was charged. I need a refund or reshipment.",
+    "expected_tier": 3,
+    "expected_category": "complex",
+    "expected_tools": ["lookup_order", "search_tickets", "create_ticket"],
+    "should_escalate": true,
+    "acceptable_responses": ["investigate", "refund", "reship", "looking"]
+  }
+]

@@ -1,0 +1,102 @@
+# Control band definitions for production monitoring (Stage 6)
+# metric → baseline, warning, critical, tier actions
+
+bands:
+  tier1_latency_p95:
+    metric: tier1_response_latency_p95
+    source: cloudwatch_custom_metric
+    unit: seconds
+    baseline: 2.5
+    warning: 3.0
+    critical: 5.0
+    actions:
+      warning: "annotate CloudWatch dashboard"
+      critical: "SNS alert → Slack; check prompt caching and RAG pipeline"
+
+  tier2_latency_p95:
+    metric: tier2_response_latency_p95
+    source: cloudwatch_custom_metric
+    unit: seconds
+    baseline: 12.0
+    warning: 15.0
+    critical: 25.0
+    actions:
+      warning: "annotate CloudWatch dashboard"
+      critical: "SNS alert → Slack; check MCP server latency and tool timeouts"
+
+  tier3_latency_p95:
+    metric: tier3_response_latency_p95
+    source: cloudwatch_custom_metric
+    unit: seconds
+    baseline: 90.0
+    warning: 120.0
+    critical: 180.0
+    actions:
+      warning: "annotate CloudWatch dashboard"
+      critical: "SNS alert → Slack; check task budget and agentic loop"
+
+  routing_accuracy:
+    metric: intent_classification_accuracy
+    source: cloudwatch_custom_metric
+    unit: percent
+    baseline: 97.0
+    warning: 95.0
+    critical: 90.0
+    actions:
+      warning: "review misclassified intents in eval logs"
+      critical: "SNS alert → Slack; freeze prompt changes; run full eval suite"
+
+  cache_miss_rate:
+    metric: prompt_cache_miss_rate
+    source: cloudwatch_custom_metric
+    unit: percent
+    baseline: 2.0
+    warning: 5.0
+    critical: 15.0
+    actions:
+      warning: "audit prompt for non-deterministic content before breakpoint"
+      critical: "SNS alert; check for tool schema changes or serialization drift"
+
+  error_rate:
+    metric: api_error_rate_5xx
+    source: cloudwatch_metric
+    unit: percent
+    baseline: 0.5
+    warning: 2.0
+    critical: 5.0
+    actions:
+      warning: "check CloudWatch Logs Insights for error patterns"
+      critical: "SNS alert → Slack; Lambda alias rollback if correlated with deploy"
+
+  cost_per_query_tier1:
+    metric: cost_per_query_tier1
+    source: cloudwatch_custom_metric
+    unit: usd
+    baseline: 0.03
+    warning: 0.05
+    critical: 0.10
+    actions:
+      warning: "review token usage; check cache hit rate"
+      critical: "SNS alert; audit prompt length and RAG document injection"
+
+  dedup_override_rate:
+    metric: dedup_override_rate
+    source: cloudwatch_custom_metric
+    unit: percent
+    baseline: 5.0
+    warning: 20.0
+    critical: 40.0
+    actions:
+      warning: "review false-positive dedup matches; consider lowering threshold"
+      critical: "SNS alert; tune similarity threshold; add edge cases to eval set"
+
+  lambda_cold_start_rate:
+    metric: lambda_cold_start_percentage
+    source: cloudwatch_metric
+    unit: percent
+    baseline: 5.0
+    warning: 15.0
+    critical: 30.0
+    actions:
+      warning: "check provisioned concurrency settings"
+      critical: "increase provisioned concurrency; review dependency bundle size"

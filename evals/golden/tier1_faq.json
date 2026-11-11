@@ -1,0 +1,122 @@
+[
+  {
+    "id": "t1-faq-001",
+    "prompt": "What is your return policy?",
+    "category": "tier1_faq",
+    "description": "Simple FAQ about return policy",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-002",
+    "prompt": "How long does standard shipping take?",
+    "category": "tier1_faq",
+    "description": "Shipping time FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-003",
+    "prompt": "Do you offer express shipping?",
+    "category": "tier1_faq",
+    "description": "Express shipping availability",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-004",
+    "prompt": "What payment methods do you accept?",
+    "category": "tier1_faq",
+    "description": "Payment methods FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-005",
+    "prompt": "How do I reset my password?",
+    "category": "tier1_faq",
+    "description": "Account help FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-006",
+    "prompt": "What are the dimensions and weight of the Premium Widget?",
+    "category": "tier1_faq",
+    "description": "Product specifications FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-007",
+    "prompt": "Is the Deluxe Widget compatible with the Standard Base?",
+    "category": "tier1_faq",
+    "description": "Product compatibility FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-008",
+    "prompt": "Do you ship internationally?",
+    "category": "tier1_faq",
+    "description": "International shipping FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-009",
+    "prompt": "What is the warranty period for electronic products?",
+    "category": "tier1_faq",
+    "description": "Warranty FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  },
+  {
+    "id": "t1-faq-010",
+    "prompt": "Can I change my delivery address after placing an order?",
+    "category": "tier1_faq",
+    "description": "Post-order modification FAQ",
+    "expected": {
+      "tier": 1,
+      "has_citation": true,
+      "factual_claims_grounded": true,
+      "latency_ms_max": 3000
+    }
+  }
+]

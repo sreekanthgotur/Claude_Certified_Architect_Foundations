@@ -1,0 +1,99 @@
+[
+  {
+    "id": "dedup-exact-001",
+    "prompt": "Create a ticket for my shipping issue. My order ORD-98765 hasn't arrived.",
+    "category": "dedup",
+    "description": "Exact match: same customer + same category + open ticket exists",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets"],
+      "dedup_expected": {
+        "is_duplicate": true,
+        "match_type": "exact",
+        "existing_ticket_id": "TKT-54321"
+      }
+    }
+  },
+  {
+    "id": "dedup-exact-002",
+    "prompt": "Create a ticket about a billing issue.",
+    "category": "dedup",
+    "description": "Different category: same customer but different category -> no duplicate",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets", "create_ticket"],
+      "dedup_expected": {
+        "is_duplicate": false
+      }
+    }
+  },
+  {
+    "id": "dedup-semantic-001",
+    "prompt": "My premium widget is cracked and doesn't work. I need help.",
+    "category": "dedup",
+    "description": "Semantic match: similar description to open ticket (score > 0.85)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets"],
+      "dedup_expected": {
+        "is_duplicate": true,
+        "match_type": "semantic"
+      }
+    }
+  },
+  {
+    "id": "dedup-semantic-002",
+    "prompt": "I was charged for express shipping but received standard delivery.",
+    "category": "dedup",
+    "description": "Below threshold: similar topic but different actual issue (score < 0.85)",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets", "create_ticket"],
+      "dedup_expected": {
+        "is_duplicate": false
+      }
+    }
+  },
+  {
+    "id": "dedup-override-001",
+    "prompt": "I know there's an existing ticket but this is a DIFFERENT shipping problem. Create a new ticket.",
+    "category": "dedup",
+    "description": "Customer override: duplicate found but customer requests new ticket",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets", "create_ticket"],
+      "dedup_expected": {
+        "is_duplicate": true,
+        "overridden": true
+      }
+    }
+  },
+  {
+    "id": "dedup-closed-001",
+    "prompt": "I have another shipping delay, similar to the one I reported last month that was resolved.",
+    "category": "dedup",
+    "description": "Closed ticket: same category but previous ticket is CLOSED -> new ticket",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets", "create_ticket"],
+      "dedup_expected": {
+        "is_duplicate": false
+      }
+    }
+  },
+  {
+    "id": "dedup-multi-001",
+    "prompt": "Create a ticket for my delayed order shipment.",
+    "category": "dedup",
+    "description": "Multiple open tickets: matches the shipping one, not the billing one",
+    "expected": {
+      "tier": 2,
+      "expected_tools": ["search_tickets"],
+      "dedup_expected": {
+        "is_duplicate": true,
+        "match_type": "exact",
+        "existing_ticket_id": "TKT-BBB"
+      }
+    }
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "id": "route-001",
+    "prompt": "What is your return policy?",
+    "category": "routing",
+    "description": "FAQ -> Tier 1",
+    "expected": { "tier": 1 }
+  },
+  {
+    "id": "route-002",
+    "prompt": "Where is my order ORD-12345?",
+    "category": "routing",
+    "description": "Order status -> Tier 2",
+    "expected": { "tier": 2 }
+  },
+  {
+    "id": "route-003",
+    "prompt": "I have a complex billing dispute across three accounts.",
+    "category": "routing",
+    "description": "Complex investigation -> Tier 3",
+    "expected": { "tier": 3 }
+  },
+  {
+    "id": "route-004",
+    "prompt": "asdf jkl; random gibberish 12345",
+    "category": "routing",
+    "description": "Unintelligible input -> escalate",
+    "expected": { "tier": 1, "should_escalate": true }
+  },
+  {
+    "id": "route-005",
+    "prompt": "I want to permanently delete my entire account and all data.",
+    "category": "routing",
+    "description": "Account deletion (policy-gated) -> escalate",
+    "expected": { "tier": 2, "should_escalate": true }
+  },
+  {
+    "id": "route-006",
+    "prompt": "Can I return an item I bought 2 weeks ago?",
+    "category": "routing",
+    "description": "Return eligibility FAQ -> Tier 1",
+    "expected": { "tier": 1 }
+  },
+  {
+    "id": "route-007",
+    "prompt": "I want to initiate a return for order ORD-99999.",
+    "category": "routing",
+    "description": "Active return request -> Tier 2",
+    "expected": { "tier": 2 }
+  },
+  {
+    "id": "route-008",
+    "prompt": "Change my subscription from Premium to Basic.",
+    "category": "routing",
+    "description": "Subscription change -> Tier 2",
+    "expected": { "tier": 2 }
+  },
+  {
+    "id": "route-009",
+    "prompt": "How much does the Standard Widget cost?",
+    "category": "routing",
+    "description": "Product pricing FAQ -> Tier 1",
+    "expected": { "tier": 1 }
+  },
+  {
+    "id": "route-010",
+    "prompt": "I need to speak with a manager about ongoing quality issues across multiple orders.",
+    "category": "routing",
+    "description": "Manager request with investigation -> Tier 3 or escalate",
+    "expected": { "tier": 3, "should_escalate": true }
+  },
+  {
+    "id": "route-011",
+    "prompt": "What are your business hours?",
+    "category": "routing",
+    "description": "Simple FAQ -> Tier 1",
+    "expected": { "tier": 1 }
+  },
+  {
+    "id": "route-012",
+    "prompt": "Create a ticket for a defective product I received.",
+    "category": "routing",
+    "description": "Ticket creation -> Tier 2",
+    "expected": { "tier": 2 }
+  },
+  {
+    "id": "route-013",
+    "prompt": "I was promised a price match two months ago and it never came through. I've called four times. Each agent says something different. I need this resolved once and for all.",
+    "category": "routing",
+    "description": "Frustrated repeat caller, complex -> Tier 3",
+    "expected": { "tier": 3 }
+  },
+  {
+    "id": "route-014",
+    "prompt": "Do you have any active promotions or discount codes?",
+    "category": "routing",
+    "description": "Promotions FAQ -> Tier 1",
+    "expected": { "tier": 1 }
+  },
+  {
+    "id": "route-015",
+    "prompt": "I need legal representation for a dispute with your company.",
+    "category": "routing",
+    "description": "Legal request (policy-gated) -> escalate",
+    "expected": { "tier": 2, "should_escalate": true }
+  }
+]

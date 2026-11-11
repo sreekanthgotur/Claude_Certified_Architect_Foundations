@@ -1,0 +1,60 @@
+{
+  "input_sanitization": [
+    {
+      "input": "Hello\u0000World",
+      "expected": "HelloWorld",
+      "description": "Strips null bytes"
+    },
+    {
+      "input": "Normal text with spaces",
+      "expected": "Normal text with spaces",
+      "description": "Leaves normal text unchanged"
+    },
+    {
+      "input": "  leading and trailing  ",
+      "expected": "leading and trailing",
+      "description": "Strips leading/trailing whitespace"
+    },
+    {
+      "input": "",
+      "expected": "",
+      "description": "Empty string stays empty"
+    }
+  ],
+  "id_validation": [
+    {
+      "input": "ORD-12345",
+      "type": "order_id",
+      "valid": true
+    },
+    {
+      "input": "CUST-00001",
+      "type": "customer_id",
+      "valid": true
+    },
+    {
+      "input": "invalid",
+      "type": "order_id",
+      "valid": false
+    },
+    {
+      "input": "",
+      "type": "customer_id",
+      "valid": false
+    },
+    {
+      "input": "ORD-1234; DROP TABLE orders;--",
+      "type": "order_id",
+      "valid": false
+    }
+  ],
+  "tier_mapping": [
+    {"category": "billing", "expected_tier": 1},
+    {"category": "shipping", "expected_tier": 1},
+    {"category": "general", "expected_tier": 1},
+    {"category": "returns", "expected_tier": 2},
+    {"category": "account", "expected_tier": 2},
+    {"category": "technical", "expected_tier": 2},
+    {"category": "complex", "expected_tier": 3}
+  ]
+}
