@@ -9,9 +9,15 @@ import { useChat } from "@/hooks/useChat";
 import { useStreamingMessage } from "@/hooks/useStreamingMessage";
 import { exportConversation } from "@/services/api";
 
-const WS_URL = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws/chat`;
+function buildWsUrl(sessionId: string): string {
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/ws/chat/${sessionId}`;
+}
 
 export function App() {
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const wsUrl = buildWsUrl(sessionId);
+
   const {
     messages,
     isStreaming,
@@ -23,11 +29,10 @@ export function App() {
     respondToApproval,
     clearEscalation,
     clearMessages,
-  } = useChat(WS_URL);
+  } = useChat(wsUrl);
 
   const streaming = useStreamingMessage();
   const [showUpload, setShowUpload] = useState(false);
-  const [sessionId] = useState(() => crypto.randomUUID());
 
   const handleNewChat = useCallback(() => {
     clearMessages();
