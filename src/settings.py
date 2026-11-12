@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    ai_mode: str = "stub"  # "stub" = canned responses (no key needed), "live" = real Claude API
     anthropic_api_key: str = ""
     anthropic_model_classifier: str = "claude-haiku-5-5"
     anthropic_model_tier1: str = "claude-sonnet-5-5"
@@ -32,6 +33,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def is_stub_mode(self) -> bool:
+        return self.ai_mode.lower() == "stub"
 
 
 settings = Settings()
