@@ -11,6 +11,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
+from pydantic import BaseModel
+
 from src.orchestrator.dispatcher import Dispatcher
 from src.orchestrator.escalation import EscalationEngine
 from src.orchestrator.models import ConversationState
@@ -20,6 +22,7 @@ from src.tiers.stub_handler import StubClassifier, StubTierHandler
 from src.tiers.tier1_instant import Tier1Handler
 from src.tiers.tier2_guided import Tier2Handler
 from src.tiers.tier3_complex import Tier3Handler
+from src.tools.dedup_stub import check_duplicate_stub
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,15 @@ _dispatcher: Dispatcher | None = None
 _classifier: IntentClassifier | None = None
 _stub_classifier: StubClassifier | None = None
 _sessions: dict[str, ConversationState] = {}
+_tickets: list[dict[str, str]] = []
+_ticket_counter: int = 0
+
+
+class TicketRequest(BaseModel):
+    customer_id: str
+    category: str
+    description: str
+    customer_override: bool = False
 
 
 @asynccontextmanager
@@ -148,6 +160,74 @@ async def chat(
         }
 
     return result
+
+
+@app.get("/api/tickets")
+async def list_tickets(customer_id: str | None = None) -> dict[str, Any]:
+    if customer_id:
+        filtered = [t for t in _tickets if t["customer_id"] == customer_id]
+    else:
+        filtered = list(_tickets)
+    return {"tickets": filtered, "total": len(filtered)}
+
+
+@app.post("/api/ticket")
+async def create_ticket(req: TicketRequest) -> dict[str, Any]:
+    global _ticket_counter
+
+    dedup = await check_duplicate_stub(
+        customer_id=req.customer_id,
+        category=req.category,
+        description=req.description,
+        existing_tickets=_tickets,
+        customer_override=req.customer_override,
+    )
+
+    if dedup.is_duplicate and not req.customer_override:
+        return {
+            "action": "blocked",
+            "reason": "Duplicate ticket detected",
+            "duplicate_of": dedup.duplicate_of,
+            "match_type": dedup.match_type,
+            "similarity_score": dedup.similarity_score,
+            "message": (
+                f"A similar open ticket ({dedup.duplicate_of}) already exists "
+                f"(match type: {dedup.match_type}, "
+                f"similarity: {dedup.similarity_score:.0%}). "
+                "Set customer_override=true to create it anyway."
+            ),
+        }
+
+    _ticket_counter += 1
+    ticket_id = f"TKT-{_ticket_counter:04d}"
+    ticket = {
+        "ticket_id": ticket_id,
+        "customer_id": req.customer_id,
+        "category": req.category,
+        "description": req.description,
+        "status": "open",
+        "customer_override": str(req.customer_override),
+    }
+    _tickets.append(ticket)
+
+    result: dict[str, Any] = {
+        "action": "created",
+        "ticket": ticket,
+    }
+    if req.customer_override and dedup.similarity_score > 0:
+        result["dedup_note"] = (
+            "Created with customer override. "
+            f"Flagged for audit (similarity: {dedup.similarity_score:.0%})."
+        )
+    return result
+
+
+@app.delete("/api/tickets")
+async def clear_tickets() -> dict[str, str]:
+    global _ticket_counter
+    _tickets.clear()
+    _ticket_counter = 0
+    return {"status": "all tickets cleared"}
 
 
 @app.websocket("/ws/chat/{session_id}")
