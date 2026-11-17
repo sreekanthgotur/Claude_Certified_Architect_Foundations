@@ -45,7 +45,9 @@ PREFIX = f"{PROJECT}-{ENV}"
 MOTO_HOST = "127.0.0.1"
 MOTO_PORT = 5555
 WEB_PORT = 8080
+API_PORT = 8001
 ENDPOINT = f"http://{MOTO_HOST}:{MOTO_PORT}"
+LOCAL_API_URL = f"http://{MOTO_HOST}:{API_PORT}"
 
 # Fake credentials for the emulator
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -366,7 +368,8 @@ def build_and_upload_frontend(src_dir: Path, bucket: str, api_url: str) -> int:
 
 
 def _create_placeholder_frontend(dist_dir: Path, api_url: str):
-    html = """<!DOCTYPE html>
+    html = (
+        """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -392,17 +395,42 @@ th{color:var(--mt);font-weight:600}
 .tb{display:inline-block;padding:.15rem .5rem;border-radius:.25rem;font-size:.7rem;font-weight:600}
 .t1{background:#22c55e33;color:#22c55e}.t2{background:#f59e0b33;color:#f59e0b}.t3{background:#ef444433;color:#ef4444}
 .mono{font-family:Consolas,'Courier New',monospace;font-size:.8rem;color:var(--ac);background:rgba(59,130,246,.1);padding:.1rem .35rem;border-radius:.2rem}
+.chat-box{min-height:280px;max-height:380px;overflow-y:auto;margin-bottom:1rem;padding:.5rem;border:1px solid var(--bd);border-radius:.5rem;background:var(--bg)}
+.msg{padding:.6rem 1rem;border-radius:.5rem;margin-bottom:.5rem;max-width:85%;word-wrap:break-word}
+.msg.user{background:var(--ac);margin-left:auto}.msg.bot{background:var(--bd)}
+.msg .meta{font-size:.7rem;color:var(--mt);margin-top:.25rem}
+.input-row{display:flex;gap:.5rem}
+.input-row input{flex:1;padding:.75rem;border-radius:.5rem;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.95rem;outline:none}
+.input-row input:focus{border-color:var(--ac)}
+.input-row button{padding:.75rem 1.5rem;border-radius:.5rem;border:none;background:var(--ac);color:white;font-weight:600;cursor:pointer}
+.input-row button:hover{opacity:.9}
+.input-row button:disabled{opacity:.5;cursor:not-allowed}
+.api-status{font-size:.75rem;margin-top:.5rem;padding:.25rem .5rem;border-radius:.25rem;display:inline-block}
+.api-on{background:#22c55e22;color:var(--ok)}.api-off{background:#ef444422;color:var(--dg)}
 </style>
 </head>
 <body>
 <div class="hd"><h1>Enterprise AI Customer Support Agent</h1><span class="bg">AWS Emulator (Moto)</span></div>
 <div class="ct">
 <div class="st">
-<div class="sv"><div class="v">STUB</div><div class="l">AI Mode</div></div>
+<div class="sv"><div class="v" id="stat-mode">STUB</div><div class="l">AI Mode</div></div>
 <div class="sv"><div class="v">7</div><div class="l">AWS Services</div></div>
-<div class="sv"><div class="v">3-Tier</div><div class="l">Architecture</div></div>
-<div class="sv"><div class="v" style="color:#22c55e">$0</div><div class="l">AWS Cost</div></div>
+<div class="sv"><div class="v" id="stat-tier">-</div><div class="l">Last Tier</div></div>
+<div class="sv"><div class="v" id="stat-msgs">0</div><div class="l">Messages</div></div>
 </div>
+
+<div class="cd">
+<h2>Chat</h2>
+<div class="chat-box" id="chat-box">
+<div class="msg bot">Hello! I am your AI Customer Support Agent running on the AWS Emulator.<br>Try asking about orders, billing, refunds, or technical issues.<div class="meta">System &bull; Tier 1 &bull; Stub Mode</div></div>
+</div>
+<div class="input-row">
+<input type="text" id="msg-input" placeholder="Type your message ..." disabled>
+<button id="send-btn" onclick="sendMsg()" disabled>Send</button>
+</div>
+<div id="api-status" class="api-status api-off">Checking API connection...</div>
+</div>
+
 <div class="cd"><h2>Infrastructure Status (AWS Emulator)</h2>
 <table><tr><th>Service</th><th>Resource</th><th>Details</th><th>Status</th></tr>
 <tr><td>Lambda</td><td><span class="mono">ccar-f-mvp-dev-api</span></td><td>Python 3.12, 512 MB, 30s</td><td><span class="dt"></span>Deployed</td></tr>
@@ -428,22 +456,81 @@ th{color:var(--mt);font-weight:600}
 <tr><td style="font-weight:600">Tool Design &amp; MCP</td><td>18%</td><td>Dedup tools, approval gates, Tool Runner, MCP server</td></tr>
 <tr><td style="font-weight:600">Context &amp; Reliability</td><td>15%</td><td>Token budgets, prompt caching, error handling, guardrails</td></tr>
 </table></div>
-<div class="cd"><h2>Lambda Environment Variables</h2>
-<table><tr><th>Variable</th><th>Value</th></tr>
-<tr><td><span class="mono">ENVIRONMENT</span></td><td>dev</td></tr>
-<tr><td><span class="mono">AI_MODE</span></td><td>stub</td></tr>
-<tr><td><span class="mono">DYNAMODB_TABLE</span></td><td>ccar-f-mvp-dev-sessions</td></tr>
-<tr><td><span class="mono">LOG_LEVEL</span></td><td>DEBUG</td></tr>
-<tr><td><span class="mono">ANTHROPIC_API_KEY_ARN</span></td><td>arn:aws:secretsmanager:us-east-1:***</td></tr>
-</table></div>
 <div class="cd" style="text-align:center;color:var(--mt);font-size:.85rem">
 <p>All resources deployed to Moto AWS Emulator &mdash; no real AWS account or costs.</p>
-<p style="margin-top:.5rem">Emulator: <span class="mono">http://127.0.0.1:5555</span> &bull; Frontend: <span class="mono">http://127.0.0.1:8080</span></p>
-<p style="margin-top:.5rem">For the interactive chat, run: <span class="mono">python -m uvicorn src.main:app --port 8000</span></p>
+<p style="margin-top:.5rem">Emulator: <span class="mono">http://127.0.0.1:5555</span> &bull; Dashboard: <span class="mono">http://127.0.0.1:8080</span></p>
 </div>
 </div>
+<script>
+var API="__API_URL__";
+var sessionId=null;
+var msgCount=0;
+
+function checkApi(){
+ fetch(API+"/health").then(function(r){return r.json()}).then(function(d){
+  document.getElementById("api-status").className="api-status api-on";
+  document.getElementById("api-status").textContent="API connected ("+API+") — "+(d.ai_mode||"stub").toUpperCase()+" mode";
+  document.getElementById("stat-mode").textContent=(d.ai_mode||"stub").toUpperCase();
+  document.getElementById("msg-input").disabled=false;
+  document.getElementById("send-btn").disabled=false;
+  initSession();
+ }).catch(function(){
+  document.getElementById("api-status").className="api-status api-off";
+  document.getElementById("api-status").innerHTML="API not reachable at "+API+". Start it with: <span class='mono'>python -m uvicorn src.main:app --port 8001</span>";
+  setTimeout(checkApi,5000);
+ });
+}
+
+function initSession(){
+ fetch(API+"/api/session",{method:"POST"}).then(function(r){return r.json()}).then(function(d){
+  sessionId=d.session_id;
+ }).catch(function(){
+  sessionId="local-"+Date.now();
+ });
+}
+
+function sendMsg(){
+ var input=document.getElementById("msg-input");
+ var text=input.value.trim();
+ if(!text)return;
+ input.value="";
+ msgCount++;
+ document.getElementById("stat-msgs").textContent=msgCount;
+ addMessage(text,"user","You");
+ document.getElementById("send-btn").disabled=true;
+ fetch(API+"/api/chat?session_id="+encodeURIComponent(sessionId)+"&message="+encodeURIComponent(text),{method:"POST"})
+ .then(function(r){return r.json()})
+ .then(function(d){
+  if(d.error){addMessage(d.error,"bot","Error");return}
+  var tier=d.tier||"1";
+  document.getElementById("stat-tier").textContent="Tier "+tier;
+  var meta="AI &bull; Tier "+tier;
+  if(d.model)meta+=" &bull; "+d.model;
+  addMessage(d.content,"bot",meta);
+ }).catch(function(e){
+  addMessage("Error: "+e.message,"bot","System");
+ }).finally(function(){
+  document.getElementById("send-btn").disabled=false;
+  document.getElementById("msg-input").focus();
+ });
+}
+
+function addMessage(text,type,meta){
+ var box=document.getElementById("chat-box");
+ var div=document.createElement("div");
+ div.className="msg "+type;
+ div.innerHTML=text.replace(/</g,"&lt;").replace(/>/g,"&gt;")+(meta?'<div class="meta">'+meta+'</div>':"");
+ box.appendChild(div);
+ box.scrollTop=box.scrollHeight;
+}
+
+document.getElementById("msg-input").addEventListener("keypress",function(e){if(e.key==="Enter")sendMsg()});
+checkApi();
+</script>
 </body>
 </html>"""
+        .replace("__API_URL__", api_url)
+    )
     (dist_dir / "index.html").write_text(html, encoding="utf-8")
 
 
@@ -536,7 +623,7 @@ def main():
         # Build and upload frontend
         logger.info("")
         logger.info("--- Deploying Frontend ---")
-        file_count = build_and_upload_frontend(src_dir, bucket, api_url)
+        file_count = build_and_upload_frontend(src_dir, bucket, LOCAL_API_URL)
 
         # Summary
         logger.info("")
@@ -568,6 +655,9 @@ def main():
         web_thread = start_frontend_server(bucket)
         logger.info("")
         logger.info("  >>> Open in browser: http://127.0.0.1:%s <<<", WEB_PORT)
+        logger.info("")
+        logger.info("  To enable the chatbot, start the API in another terminal:")
+        logger.info("    python -m uvicorn src.main:app --port %s", API_PORT)
         logger.info("")
         logger.info("Server running. Press Ctrl+C to stop.")
 
