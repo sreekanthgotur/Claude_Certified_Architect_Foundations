@@ -170,12 +170,42 @@ def create_lambda_role() -> str:
     )
     role_arn = resp["Role"]["Arn"]
 
-    # Attach basic Lambda execution policy
-    iam.attach_role_policy(
+    # Inline policy (moto doesn't have AWS managed policies pre-loaded)
+    iam.put_role_policy(
         RoleName=role_name,
-        PolicyArn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+        PolicyName="LambdaBasicExecution",
+        PolicyDocument=json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents",
+                    ],
+                    "Resource": "arn:aws:logs:*:*:*",
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "dynamodb:GetItem",
+                        "dynamodb:PutItem",
+                        "dynamodb:UpdateItem",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:Query",
+                    ],
+                    "Resource": f"arn:aws:dynamodb:{REGION}:*:table/{PROJECT}-{ENV}-sessions",
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:GetSecretValue"],
+                    "Resource": "*",
+                },
+            ],
+        }),
     )
-    logger.info("  IAM role created: %s", role_arn)
+    logger.info("  IAM role created: %s (inline policy attached)", role_arn)
     return role_arn
 
 
