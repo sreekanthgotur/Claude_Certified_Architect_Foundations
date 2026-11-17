@@ -326,33 +326,15 @@ def build_and_upload_frontend(src_dir: Path, bucket: str, api_url: str) -> int:
     web_dir = src_dir / "web"
     dist_dir = web_dir / "dist"
 
-    # Check if frontend build exists
-    if not dist_dir.exists():
-        logger.info("Building frontend ...")
-        if (web_dir / "node_modules").exists():
-            try:
-                result = subprocess.run(
-                    "npx vite build",
-                    cwd=str(web_dir),
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    shell=True,
-                )
-                if result.returncode != 0:
-                    logger.warning("Frontend build failed: %s", result.stderr[:500])
-                    logger.info("Creating a minimal frontend placeholder instead ...")
-                    dist_dir.mkdir(parents=True, exist_ok=True)
-                    _create_placeholder_frontend(dist_dir, api_url)
-            except (FileNotFoundError, OSError) as exc:
-                logger.warning("Could not run npx: %s", exc)
-                logger.info("Creating a minimal frontend placeholder instead ...")
-                dist_dir.mkdir(parents=True, exist_ok=True)
-                _create_placeholder_frontend(dist_dir, api_url)
-        else:
-            logger.info("node_modules not found — creating placeholder frontend ...")
-            dist_dir.mkdir(parents=True, exist_ok=True)
-            _create_placeholder_frontend(dist_dir, api_url)
+    # Always create the self-contained emulator dashboard
+    # (Vite-built React app needs the API backend running separately)
+    emulator_dist = src_dir / "_emulator_dist"
+    if emulator_dist.exists():
+        shutil.rmtree(emulator_dist)
+    emulator_dist.mkdir(parents=True)
+    logger.info("Creating emulator dashboard page ...")
+    _create_placeholder_frontend(emulator_dist, api_url)
+    dist_dir = emulator_dist
 
     # Upload to S3
     s3 = get_client("s3")
@@ -384,165 +366,85 @@ def build_and_upload_frontend(src_dir: Path, bucket: str, api_url: str) -> int:
 
 
 def _create_placeholder_frontend(dist_dir: Path, api_url: str):
-    html = f"""\
-<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CCAR-F MVP — Enterprise AI Customer Support</title>
+<title>CCAR-F MVP - Enterprise AI Customer Support</title>
 <style>
-  :root {{
-    --bg: #0f172a; --surface: #1e293b; --border: #334155;
-    --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6;
-    --success: #22c55e; --warn: #f59e0b; --danger: #ef4444;
-  }}
-  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }}
-  .header {{ background: linear-gradient(135deg, #1e3a5f, #2563eb); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }}
-  .header h1 {{ font-size: 1.3rem; font-weight: 700; }}
-  .badge {{ background: var(--success); color: #000; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }}
-  .container {{ max-width: 900px; margin: 2rem auto; padding: 0 1rem; }}
-  .card {{ background: var(--surface); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1rem; }}
-  .card h2 {{ font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent); }}
-  .chat-box {{ min-height: 300px; max-height: 400px; overflow-y: auto; margin-bottom: 1rem; padding: 0.5rem; }}
-  .msg {{ padding: 0.6rem 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem; max-width: 80%; }}
-  .msg.user {{ background: var(--accent); margin-left: auto; }}
-  .msg.bot {{ background: var(--border); }}
-  .msg .meta {{ font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }}
-  .input-row {{ display: flex; gap: 0.5rem; }}
-  .input-row input {{ flex: 1; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem; }}
-  .input-row button {{ padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }}
-  .input-row button:hover {{ opacity: 0.9; }}
-  .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }}
-  .stat {{ background: var(--bg); border: 1px solid var(--border); padding: 1rem; border-radius: 0.5rem; text-align: center; }}
-  .stat .value {{ font-size: 1.5rem; font-weight: 700; color: var(--accent); }}
-  .stat .label {{ font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }}
-  .tier-badge {{ display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: 600; }}
-  .tier-1 {{ background: #22c55e33; color: #22c55e; }}
-  .tier-2 {{ background: #f59e0b33; color: #f59e0b; }}
-  .tier-3 {{ background: #ef444433; color: #ef4444; }}
-  .infra-table {{ width: 100%; border-collapse: collapse; margin-top: 0.5rem; }}
-  .infra-table th, .infra-table td {{ padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }}
-  .infra-table th {{ color: var(--muted); font-weight: 600; }}
-  .status-dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.5rem; }}
-  .status-dot.ok {{ background: var(--success); }}
-  .loading {{ color: var(--muted); text-align: center; padding: 2rem; }}
+:root{--bg:#0f172a;--sf:#1e293b;--bd:#334155;--tx:#f1f5f9;--mt:#94a3b8;--ac:#3b82f6;--ok:#22c55e;--wn:#f59e0b;--dg:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+.hd{background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.hd h1{font-size:1.3rem;font-weight:700}
+.bg{background:var(--ok);color:#000;padding:.25rem .75rem;border-radius:999px;font-size:.75rem;font-weight:600}
+.ct{max-width:900px;margin:2rem auto;padding:0 1rem}
+.st{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
+.sv{background:var(--sf);border:1px solid var(--bd);padding:1rem;border-radius:.75rem;text-align:center}
+.sv .v{font-size:1.5rem;font-weight:700;color:var(--ac)}.sv .l{font-size:.75rem;color:var(--mt);margin-top:.25rem}
+.cd{background:var(--sf);border:1px solid var(--bd);border-radius:.75rem;padding:1.5rem;margin-bottom:1rem}
+.cd h2{font-size:1rem;margin-bottom:.75rem;color:var(--ac)}
+table{width:100%;border-collapse:collapse;margin-top:.5rem}
+th,td{padding:.5rem .75rem;text-align:left;border-bottom:1px solid var(--bd);font-size:.85rem}
+th{color:var(--mt);font-weight:600}
+.dt{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.5rem;background:var(--ok)}
+.tb{display:inline-block;padding:.15rem .5rem;border-radius:.25rem;font-size:.7rem;font-weight:600}
+.t1{background:#22c55e33;color:#22c55e}.t2{background:#f59e0b33;color:#f59e0b}.t3{background:#ef444433;color:#ef4444}
+.mono{font-family:Consolas,'Courier New',monospace;font-size:.8rem;color:var(--ac);background:rgba(59,130,246,.1);padding:.1rem .35rem;border-radius:.2rem}
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>Enterprise AI Customer Support Agent</h1>
-  <span class="badge">AWS Emulator (Moto)</span>
+<div class="hd"><h1>Enterprise AI Customer Support Agent</h1><span class="bg">AWS Emulator (Moto)</span></div>
+<div class="ct">
+<div class="st">
+<div class="sv"><div class="v">STUB</div><div class="l">AI Mode</div></div>
+<div class="sv"><div class="v">7</div><div class="l">AWS Services</div></div>
+<div class="sv"><div class="v">3-Tier</div><div class="l">Architecture</div></div>
+<div class="sv"><div class="v" style="color:#22c55e">$0</div><div class="l">AWS Cost</div></div>
 </div>
-<div class="container">
-
-  <div class="stats">
-    <div class="stat"><div class="value" id="stat-mode">STUB</div><div class="label">AI Mode</div></div>
-    <div class="stat"><div class="value" id="stat-tier">-</div><div class="label">Last Tier</div></div>
-    <div class="stat"><div class="value" id="stat-msgs">0</div><div class="label">Messages</div></div>
-    <div class="stat"><div class="value" id="stat-tickets">0</div><div class="label">Tickets</div></div>
-  </div>
-
-  <div class="card" style="margin-top: 1rem;">
-    <h2>Chat</h2>
-    <div class="chat-box" id="chat-box">
-      <div class="msg bot">
-        Hello! I'm your AI Customer Support Agent. Try asking about orders, billing, refunds, or technical issues.
-        <div class="meta">System &bull; Tier 1</div>
-      </div>
-    </div>
-    <div class="input-row">
-      <input type="text" id="msg-input" placeholder="Type your message ..." onkeypress="if(event.key==='Enter')sendMsg()">
-      <button onclick="sendMsg()">Send</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Infrastructure Status (AWS Emulator)</h2>
-    <table class="infra-table">
-      <tr><th>Service</th><th>Resource</th><th>Status</th></tr>
-      <tr><td>Lambda</td><td>{PREFIX}-api</td><td><span class="status-dot ok"></span>Deployed</td></tr>
-      <tr><td>API Gateway</td><td>{PREFIX}-http-api</td><td><span class="status-dot ok"></span>Active</td></tr>
-      <tr><td>DynamoDB</td><td>{PREFIX}-sessions</td><td><span class="status-dot ok"></span>Active</td></tr>
-      <tr><td>S3</td><td>{PREFIX}-frontend</td><td><span class="status-dot ok"></span>Hosting</td></tr>
-      <tr><td>Secrets Manager</td><td>{PREFIX}/anthropic-api-key</td><td><span class="status-dot ok"></span>Stored</td></tr>
-      <tr><td>IAM</td><td>{PREFIX}-lambda-role</td><td><span class="status-dot ok"></span>Configured</td></tr>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2>CCAR-F Architecture</h2>
-    <table class="infra-table">
-      <tr><th>Tier</th><th>Model</th><th>Purpose</th><th>Effort</th></tr>
-      <tr><td><span class="tier-badge tier-1">Tier 1</span></td><td>Sonnet 5.5</td><td>FAQ / RAG / Instant answers</td><td>medium</td></tr>
-      <tr><td><span class="tier-badge tier-2">Tier 2</span></td><td>Opus 5.5</td><td>Tool-based resolution (refunds, orders)</td><td>high</td></tr>
-      <tr><td><span class="tier-badge tier-3">Tier 3</span></td><td>Opus 5.5</td><td>Complex agentic workflows</td><td>xhigh</td></tr>
-      <tr><td><span class="tier-badge" style="background:#8b5cf633;color:#8b5cf6">Classifier</span></td><td>Haiku 5.5</td><td>Intent classification + routing</td><td>low</td></tr>
-    </table>
-  </div>
+<div class="cd"><h2>Infrastructure Status (AWS Emulator)</h2>
+<table><tr><th>Service</th><th>Resource</th><th>Details</th><th>Status</th></tr>
+<tr><td>Lambda</td><td><span class="mono">ccar-f-mvp-dev-api</span></td><td>Python 3.12, 512 MB, 30s</td><td><span class="dt"></span>Deployed</td></tr>
+<tr><td>API Gateway</td><td><span class="mono">ccar-f-mvp-dev-http-api</span></td><td>HTTP protocol</td><td><span class="dt"></span>Active</td></tr>
+<tr><td>DynamoDB</td><td><span class="mono">ccar-f-mvp-dev-sessions</span></td><td>PAY_PER_REQUEST</td><td><span class="dt"></span>Active</td></tr>
+<tr><td>S3</td><td><span class="mono">ccar-f-mvp-dev-frontend</span></td><td>Static website hosting</td><td><span class="dt"></span>Hosting</td></tr>
+<tr><td>Secrets Mgr</td><td><span class="mono">ccar-f-mvp-dev/anthropic-api-key</span></td><td>API key (placeholder)</td><td><span class="dt"></span>Stored</td></tr>
+<tr><td>IAM</td><td><span class="mono">ccar-f-mvp-dev-lambda-role</span></td><td>Inline policy</td><td><span class="dt"></span>Configured</td></tr>
+<tr><td>CloudWatch</td><td><span class="mono">/aws/lambda/ccar-f-mvp-dev-api</span></td><td>30-day retention</td><td><span class="dt"></span>Active</td></tr>
+</table></div>
+<div class="cd"><h2>3-Tier Architecture (CCAR-F)</h2>
+<table><tr><th>Tier</th><th>Model</th><th>Purpose</th><th>Effort</th></tr>
+<tr><td><span class="tb t1">Tier 1</span></td><td>Claude Sonnet 5.5</td><td>FAQ / RAG / Instant answers with citations</td><td>medium</td></tr>
+<tr><td><span class="tb t2">Tier 2</span></td><td>Claude Opus 5.5</td><td>Tool-based resolution (refunds, orders, accounts)</td><td>high</td></tr>
+<tr><td><span class="tb t3">Tier 3</span></td><td>Claude Opus 5.5</td><td>Complex agentic workflows with task budgets</td><td>xhigh</td></tr>
+<tr><td><span class="tb" style="background:#8b5cf633;color:#8b5cf6">Router</span></td><td>Claude Haiku 5.5</td><td>Intent classification &amp; tier routing</td><td>low</td></tr>
+</table></div>
+<div class="cd"><h2>CCAR-F Domain Coverage</h2>
+<table><tr><th>Domain</th><th>Weight</th><th>Key Components</th></tr>
+<tr><td style="font-weight:600">Agentic Architecture</td><td>27%</td><td>3-tier routing, escalation engine, dispatcher, intent classifier</td></tr>
+<tr><td style="font-weight:600">Claude Code Configuration</td><td>20%</td><td>CLAUDE.md, settings, project structure, scripts</td></tr>
+<tr><td style="font-weight:600">Prompt Engineering</td><td>20%</td><td>System prompts, structured output, citations, model selection</td></tr>
+<tr><td style="font-weight:600">Tool Design &amp; MCP</td><td>18%</td><td>Dedup tools, approval gates, Tool Runner, MCP server</td></tr>
+<tr><td style="font-weight:600">Context &amp; Reliability</td><td>15%</td><td>Token budgets, prompt caching, error handling, guardrails</td></tr>
+</table></div>
+<div class="cd"><h2>Lambda Environment Variables</h2>
+<table><tr><th>Variable</th><th>Value</th></tr>
+<tr><td><span class="mono">ENVIRONMENT</span></td><td>dev</td></tr>
+<tr><td><span class="mono">AI_MODE</span></td><td>stub</td></tr>
+<tr><td><span class="mono">DYNAMODB_TABLE</span></td><td>ccar-f-mvp-dev-sessions</td></tr>
+<tr><td><span class="mono">LOG_LEVEL</span></td><td>DEBUG</td></tr>
+<tr><td><span class="mono">ANTHROPIC_API_KEY_ARN</span></td><td>arn:aws:secretsmanager:us-east-1:***</td></tr>
+</table></div>
+<div class="cd" style="text-align:center;color:var(--mt);font-size:.85rem">
+<p>All resources deployed to Moto AWS Emulator &mdash; no real AWS account or costs.</p>
+<p style="margin-top:.5rem">Emulator: <span class="mono">http://127.0.0.1:5555</span> &bull; Frontend: <span class="mono">http://127.0.0.1:8080</span></p>
+<p style="margin-top:.5rem">For the interactive chat, run: <span class="mono">python -m uvicorn src.main:app --port 8000</span></p>
 </div>
-
-<script>
-const API = "{api_url}";
-let sessionId = null;
-let msgCount = 0;
-
-async function initSession() {{
-  try {{
-    const r = await fetch(API + "/api/session", {{ method: "POST" }});
-    const d = await r.json();
-    sessionId = d.session_id;
-  }} catch(e) {{
-    // Fallback: use chat endpoint directly
-    sessionId = "emulator-" + Date.now();
-  }}
-  // Check health
-  try {{
-    const h = await fetch(API + "/health");
-    const d = await h.json();
-    document.getElementById("stat-mode").textContent = (d.ai_mode || "STUB").toUpperCase();
-  }} catch(e) {{}}
-}}
-
-async function sendMsg() {{
-  const input = document.getElementById("msg-input");
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = "";
-  msgCount++;
-  document.getElementById("stat-msgs").textContent = msgCount;
-
-  addMessage(text, "user");
-
-  try {{
-    const r = await fetch(API + "/api/chat?session_id=" + sessionId + "&message=" + encodeURIComponent(text), {{
-      method: "POST",
-    }});
-    const d = await r.json();
-    const tier = d.tier || "1";
-    document.getElementById("stat-tier").textContent = "Tier " + tier;
-    addMessage(d.content, "bot", "AI &bull; Tier " + tier + (d.model ? " &bull; " + d.model : ""));
-  }} catch(e) {{
-    addMessage("Error connecting to API: " + e.message, "bot", "System &bull; Error");
-  }}
-}}
-
-function addMessage(text, type, meta) {{
-  const box = document.getElementById("chat-box");
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerHTML = text + (meta ? '<div class="meta">' + meta + '</div>' : '');
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}}
-
-initSession();
-</script>
+</div>
 </body>
-</html>
-"""
-    (dist_dir / "index.html").write_text(html)
+</html>"""
+    (dist_dir / "index.html").write_text(html, encoding="utf-8")
 
 
 # ── 9. CloudWatch log group ───────────────────────────────────────────
