@@ -28,6 +28,9 @@ import zipfile
 from pathlib import Path
 from threading import Thread
 
+import http.server
+import socketserver
+
 import boto3
 import requests
 from moto.server import ThreadedMotoServer
@@ -41,6 +44,7 @@ ENV = "dev"
 PREFIX = f"{PROJECT}-{ENV}"
 MOTO_HOST = "127.0.0.1"
 MOTO_PORT = 5555
+WEB_PORT = 8080
 ENDPOINT = f"http://{MOTO_HOST}:{MOTO_PORT}"
 
 # Fake credentials for the emulator
@@ -640,7 +644,7 @@ def main():
         logger.info("")
         logger.info("  AWS Emulator:     %s", ENDPOINT)
         logger.info("  API Gateway:      %s", api_url)
-        logger.info("  S3 Frontend:      %s/%s/index.html", ENDPOINT, bucket)
+        logger.info("  Frontend:         http://127.0.0.1:%s", WEB_PORT)
         logger.info("  DynamoDB Table:   %s", table_name)
         logger.info("  Lambda Function:  %s", lam_info["name"])
         logger.info("  Secret ARN:       %s", secret_arn)
@@ -656,6 +660,12 @@ def main():
         logger.info("--- Resource Verification ---")
         verify_resources(table_name, bucket, lam_info["name"])
 
+        # Start a local web server to serve the frontend from S3
+        logger.info("")
+        logger.info("--- Starting Frontend Web Server ---")
+        web_thread = start_frontend_server(bucket)
+        logger.info("")
+        logger.info("  >>> Open in browser: http://127.0.0.1:%s <<<", WEB_PORT)
         logger.info("")
         logger.info("Server running. Press Ctrl+C to stop.")
 
@@ -668,6 +678,40 @@ def main():
     finally:
         server.stop()
         logger.info("Emulator stopped.")
+
+
+def start_frontend_server(bucket: str) -> Thread:
+    """Serve the S3-hosted frontend as a real web page on a local port."""
+    s3 = get_client("s3")
+
+    class S3Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            key = self.path.lstrip("/")
+            if not key or key.endswith("/"):
+                key += "index.html"
+            try:
+                obj = s3.get_object(Bucket=bucket, Key=key)
+                body = obj["Body"].read()
+                content_type = obj.get("ContentType", "application/octet-stream")
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception:
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"Not found")
+
+        def log_message(self, format, *args):
+            pass  # suppress request logs
+
+    httpd = socketserver.TCPServer(("127.0.0.1", WEB_PORT), S3Handler)
+    thread = Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    logger.info("  Frontend server on http://127.0.0.1:%s (serving from S3 bucket)", WEB_PORT)
+    return thread
 
 
 def verify_resources(table_name: str, bucket: str, fn_name: str):
