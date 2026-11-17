@@ -68,6 +68,11 @@ def start_moto_server() -> ThreadedMotoServer:
         except Exception:
             time.sleep(0.3)
     logger.info("Moto server ready at %s", ENDPOINT)
+    # Reset any leftover state from a previous run
+    try:
+        requests.post(f"{ENDPOINT}/moto-api/reset", timeout=2)
+    except Exception:
+        pass
     return server
 
 
@@ -76,21 +81,24 @@ def create_dynamodb_table() -> str:
     table_name = f"{PREFIX}-sessions"
     ddb = get_client("dynamodb")
     logger.info("Creating DynamoDB table: %s", table_name)
-    ddb.create_table(
-        TableName=table_name,
-        KeySchema=[
-            {"AttributeName": "session_id", "KeyType": "HASH"},
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "session_id", "AttributeType": "S"},
-        ],
-        BillingMode="PAY_PER_REQUEST",
-        Tags=[
-            {"Key": "Environment", "Value": ENV},
-            {"Key": "Project", "Value": PROJECT},
-        ],
-    )
-    ddb.get_waiter("table_exists").wait(TableName=table_name)
+    try:
+        ddb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {"AttributeName": "session_id", "KeyType": "HASH"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "session_id", "AttributeType": "S"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+            Tags=[
+                {"Key": "Environment", "Value": ENV},
+                {"Key": "Project", "Value": PROJECT},
+            ],
+        )
+        ddb.get_waiter("table_exists").wait(TableName=table_name)
+    except ddb.exceptions.ResourceInUseException:
+        logger.info("  Table already exists, reusing")
     logger.info("  DynamoDB table created: %s", table_name)
     return table_name
 
@@ -100,7 +108,10 @@ def create_s3_bucket() -> str:
     bucket = f"{PREFIX}-frontend"
     s3 = get_client("s3")
     logger.info("Creating S3 bucket: %s", bucket)
-    s3.create_bucket(Bucket=bucket)
+    try:
+        s3.create_bucket(Bucket=bucket)
+    except Exception:
+        logger.info("  Bucket already exists, reusing")
 
     # Enable static website hosting
     s3.put_bucket_website(
@@ -133,16 +144,21 @@ def create_secret() -> str:
     name = f"{PREFIX}/anthropic-api-key"
     sm = get_client("secretsmanager")
     logger.info("Creating secret: %s", name)
-    resp = sm.create_secret(
-        Name=name,
-        SecretString=json.dumps({"ANTHROPIC_API_KEY": "sk-emulator-placeholder"}),
-        Tags=[
-            {"Key": "Environment", "Value": ENV},
-            {"Key": "Project", "Value": PROJECT},
-        ],
-    )
-    logger.info("  Secret created: %s", resp["ARN"])
-    return resp["ARN"]
+    try:
+        resp = sm.create_secret(
+            Name=name,
+            SecretString=json.dumps({"ANTHROPIC_API_KEY": "sk-emulator-placeholder"}),
+            Tags=[
+                {"Key": "Environment", "Value": ENV},
+                {"Key": "Project", "Value": PROJECT},
+            ],
+        )
+        secret_arn = resp["ARN"]
+    except Exception:
+        logger.info("  Secret already exists, reusing")
+        secret_arn = f"arn:aws:secretsmanager:{REGION}:123456789012:secret:{name}"
+    logger.info("  Secret: %s", secret_arn)
+    return secret_arn
 
 
 # ── 5. IAM role (for Lambda) ──────────────────────────────────────────
@@ -160,15 +176,19 @@ def create_lambda_role() -> str:
         }],
     })
 
-    resp = iam.create_role(
-        RoleName=role_name,
-        AssumeRolePolicyDocument=trust_policy,
-        Tags=[
-            {"Key": "Environment", "Value": ENV},
-            {"Key": "Project", "Value": PROJECT},
-        ],
-    )
-    role_arn = resp["Role"]["Arn"]
+    try:
+        resp = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=trust_policy,
+            Tags=[
+                {"Key": "Environment", "Value": ENV},
+                {"Key": "Project", "Value": PROJECT},
+            ],
+        )
+        role_arn = resp["Role"]["Arn"]
+    except Exception:
+        logger.info("  Role already exists, reusing")
+        role_arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
 
     # Inline policy (moto doesn't have AWS managed policies pre-loaded)
     iam.put_role_policy(
@@ -247,30 +267,36 @@ def create_lambda(role_arn: str, zip_bytes: bytes, table_name: str, secret_arn: 
     lam = get_client("lambda")
     logger.info("Creating Lambda function: %s", fn_name)
 
-    resp = lam.create_function(
-        FunctionName=fn_name,
-        Runtime="python3.12",
-        Role=role_arn,
-        Handler="lambda_function.handler",
-        Code={"ZipFile": zip_bytes},
-        MemorySize=512,
-        Timeout=30,
-        Environment={
-            "Variables": {
-                "ENVIRONMENT": ENV,
-                "AI_MODE": "stub",
-                "DYNAMODB_TABLE": table_name,
-                "ANTHROPIC_API_KEY_ARN": secret_arn,
-                "LOG_LEVEL": "DEBUG",
+    try:
+        resp = lam.create_function(
+            FunctionName=fn_name,
+            Runtime="python3.12",
+            Role=role_arn,
+            Handler="lambda_function.handler",
+            Code={"ZipFile": zip_bytes},
+            MemorySize=512,
+            Timeout=30,
+            Environment={
+                "Variables": {
+                    "ENVIRONMENT": ENV,
+                    "AI_MODE": "stub",
+                    "DYNAMODB_TABLE": table_name,
+                    "ANTHROPIC_API_KEY_ARN": secret_arn,
+                    "LOG_LEVEL": "DEBUG",
+                },
             },
-        },
-        Tags={
-            "Environment": ENV,
-            "Project": PROJECT,
-        },
-    )
-    logger.info("  Lambda created: %s (ARN: %s)", fn_name, resp["FunctionArn"])
-    return {"name": fn_name, "arn": resp["FunctionArn"]}
+            Tags={
+                "Environment": ENV,
+                "Project": PROJECT,
+            },
+        )
+        fn_arn = resp["FunctionArn"]
+    except Exception:
+        logger.info("  Function already exists, updating code ...")
+        lam.update_function_code(FunctionName=fn_name, ZipFile=zip_bytes)
+        fn_arn = lam.get_function(FunctionName=fn_name)["Configuration"]["FunctionArn"]
+    logger.info("  Lambda: %s (ARN: %s)", fn_name, fn_arn)
+    return {"name": fn_name, "arn": fn_arn}
 
 
 # ── 7. API Gateway ────────────────────────────────────────────────────
