@@ -462,21 +462,21 @@ th{color:var(--mt);font-weight:600}
 </div>
 </div>
 <script>
-var API="__API_URL__";
+var API="";
 var sessionId=null;
 var msgCount=0;
 
 function checkApi(){
  fetch(API+"/health").then(function(r){return r.json()}).then(function(d){
   document.getElementById("api-status").className="api-status api-on";
-  document.getElementById("api-status").textContent="API connected ("+API+") — "+(d.ai_mode||"stub").toUpperCase()+" mode";
+  document.getElementById("api-status").textContent="API connected — "+(d.ai_mode||"stub").toUpperCase()+" mode";
   document.getElementById("stat-mode").textContent=(d.ai_mode||"stub").toUpperCase();
   document.getElementById("msg-input").disabled=false;
   document.getElementById("send-btn").disabled=false;
   initSession();
  }).catch(function(){
   document.getElementById("api-status").className="api-status api-off";
-  document.getElementById("api-status").innerHTML="API not reachable at "+API+". Start it with: <span class='mono'>python -m uvicorn src.main:app --port 8001</span>";
+  document.getElementById("api-status").innerHTML="API not running. Start it with: <span class='mono'>python -m uvicorn src.main:app --port 8001</span>";
   setTimeout(checkApi,5000);
  });
 }
@@ -529,7 +529,6 @@ checkApi();
 </script>
 </body>
 </html>"""
-        .replace("__API_URL__", api_url)
     )
     (dist_dir / "index.html").write_text(html, encoding="utf-8")
 
@@ -673,11 +672,48 @@ def main():
 
 
 def start_frontend_server(bucket: str) -> Thread:
-    """Serve the S3-hosted frontend as a real web page on a local port."""
+    """Serve the S3-hosted frontend on a local port.
+
+    Also proxies /api/* and /health to the local FastAPI backend so the
+    dashboard avoids CORS issues.
+    """
     s3 = get_client("s3")
+    api_target = LOCAL_API_URL
 
     class S3Handler(http.server.BaseHTTPRequestHandler):
+
+        def _proxy(self, method: str):
+            """Forward request to the local API backend."""
+            url = api_target + self.path
+            headers = {}
+            body = None
+            length = int(self.headers.get("Content-Length", 0))
+            if length:
+                body = self.rfile.read(length)
+            ct = self.headers.get("Content-Type")
+            if ct:
+                headers["Content-Type"] = ct
+            try:
+                resp = requests.request(method, url, headers=headers, data=body, timeout=30)
+                self.send_response(resp.status_code)
+                self.send_header("Content-Type", resp.headers.get("Content-Type", "application/json"))
+                self.send_header("Content-Length", str(len(resp.content)))
+                self.end_headers()
+                self.wfile.write(resp.content)
+            except Exception as exc:
+                msg = f'{{"error":"API not reachable at {api_target}: {exc}"}}'.encode()
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(msg)))
+                self.end_headers()
+                self.wfile.write(msg)
+
+        def _is_api_path(self) -> bool:
+            return self.path.startswith("/api") or self.path.startswith("/health")
+
         def do_GET(self):
+            if self._is_api_path():
+                return self._proxy("GET")
             key = self.path.lstrip("/")
             if not key or key.endswith("/"):
                 key += "index.html"
@@ -696,6 +732,12 @@ def start_frontend_server(bucket: str) -> Thread:
                 self.end_headers()
                 self.wfile.write(b"Not found")
 
+        def do_POST(self):
+            if self._is_api_path():
+                return self._proxy("POST")
+            self.send_response(405)
+            self.end_headers()
+
         def log_message(self, format, *args):
             pass  # suppress request logs
 
@@ -703,6 +745,7 @@ def start_frontend_server(bucket: str) -> Thread:
     thread = Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     logger.info("  Frontend server on http://127.0.0.1:%s (serving from S3 bucket)", WEB_PORT)
+    logger.info("  API proxy: /api/* and /health -> %s", api_target)
     return thread
 
 
