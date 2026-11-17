@@ -298,17 +298,24 @@ def build_and_upload_frontend(src_dir: Path, bucket: str, api_url: str) -> int:
 
     # Check if frontend build exists
     if not dist_dir.exists():
-        logger.info("Building frontend (npm run build) ...")
+        logger.info("Building frontend ...")
         if (web_dir / "node_modules").exists():
-            result = subprocess.run(
-                ["npx", "vite", "build"],
-                cwd=str(web_dir),
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if result.returncode != 0:
-                logger.warning("Frontend build failed: %s", result.stderr[:500])
+            try:
+                result = subprocess.run(
+                    "npx vite build",
+                    cwd=str(web_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    shell=True,
+                )
+                if result.returncode != 0:
+                    logger.warning("Frontend build failed: %s", result.stderr[:500])
+                    logger.info("Creating a minimal frontend placeholder instead ...")
+                    dist_dir.mkdir(parents=True, exist_ok=True)
+                    _create_placeholder_frontend(dist_dir, api_url)
+            except (FileNotFoundError, OSError) as exc:
+                logger.warning("Could not run npx: %s", exc)
                 logger.info("Creating a minimal frontend placeholder instead ...")
                 dist_dir.mkdir(parents=True, exist_ok=True)
                 _create_placeholder_frontend(dist_dir, api_url)
