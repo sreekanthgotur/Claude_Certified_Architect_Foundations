@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     mcp_knowledge_url: str = "https://mcp.internal/knowledge"
     mcp_billing_url: str = "https://mcp.internal/billing"
 
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:8080,http://localhost:8080"
     log_level: str = "INFO"
     environment: str = "dev"
     refund_approval_threshold: float = 100.0
